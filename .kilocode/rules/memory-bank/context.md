@@ -27,6 +27,7 @@ A comprehensive financial management system for Harambee Sacco that addresses al
   - [x] Technology Challenges (backup, ICT)
   - [x] Low Member Participation (communications)
   - [x] Economic Challenges (flexible plans)
+- [x] Ready to Download System (exports in CSV, JSON, Excel formats)
 
 ## Current Structure
 
@@ -37,8 +38,10 @@ A comprehensive financial management system for Harambee Sacco that addresses al
 | `src/db/migrate.ts` | Migration script | ✅ Ready |
 | `src/lib/reports.ts` | Optimized report generation | ✅ Ready |
 | `src/lib/sacco-services.ts` | All SACCO business logic | ✅ Ready |
+| `src/lib/downloads.ts` | Download service (15 data types, 3 formats) | ✅ Ready |
 | `src/app/api/reports/route.ts` | Report API endpoint | ✅ Ready |
 | `src/app/api/sacco/route.ts` | SACCO services API | ✅ Ready |
+| `src/app/api/downloads/route.ts` | Download API endpoint | ✅ Ready |
 
 ## Current Focus
 
