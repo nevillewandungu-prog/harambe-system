@@ -226,7 +226,7 @@ export default function RegisterPage() {
         {/* Login Link */}
         <p className="text-center text-neutral-400 mt-6">
           Already a member?{" "}
-          <Link href="/" className="text-amber-500 hover:text-amber-400 font-medium">
+          <Link href="/login" className="text-amber-500 hover:text-amber-400 font-medium">
             Sign in
           </Link>
         </p>
