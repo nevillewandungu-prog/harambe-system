@@ -293,7 +293,7 @@ export async function saveReport(
   periodEnd: Date,
   reportData: object
 ) {
-  const [report] = await db
+  await db
     .insert(reports)
     .values({
       reportType,
@@ -302,8 +302,8 @@ export async function saveReport(
       reportData: JSON.stringify(reportData),
       status: 'completed',
       generatedAt: new Date(),
-    })
-    .returning();
+    });
   
-  return report;
+  // Return a mock report object for compatibility
+  return { id: 0, reportType, status: 'completed' };
 }

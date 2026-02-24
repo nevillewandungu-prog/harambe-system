@@ -1,99 +1,102 @@
-import { sqliteTable, text, integer, real, index } from "drizzle-orm/sqlite-core";
+import { mysqlTable, int, varchar, text, timestamp, boolean, index, float, serial } from "drizzle-orm/mysql-core";
+
+// Helper for default timestamps
+const timestamps = {
+  createdAt: timestamp("created_at").default(new Date()),
+  updatedAt: timestamp("updated_at").default(new Date()),
+};
 
 // Members table - core entity
-export const members = sqliteTable("members", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  memberNumber: text("member_number").notNull().unique(),
-  firstName: text("first_name").notNull(),
-  lastName: text("last_name").notNull(),
-  email: text("email"),
-  phone: text("phone"),
-  idNumber: text("id_number"),
-  dateOfBirth: integer("date_of_birth", { mode: "timestamp" }),
+export const members = mysqlTable("members", {
+  id: serial("id").primaryKey(),
+  memberNumber: varchar("member_number", { length: 50 }).notNull().unique(),
+  firstName: varchar("first_name", { length: 100 }).notNull(),
+  lastName: varchar("last_name", { length: 100 }).notNull(),
+  email: varchar("email", { length: 255 }),
+  phone: varchar("phone", { length: 50 }),
+  idNumber: varchar("id_number", { length: 50 }),
+  dateOfBirth: timestamp("date_of_birth"),
   address: text("address"),
-  joinedAt: integer("joined_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
-  // Security: 2FA enabled
-  twoFactorEnabled: integer("two_factor_enabled", { mode: "boolean" }).default(false),
+  joinedAt: timestamp("joined_at").default(new Date()),
+  isActive: boolean("is_active").default(true),
+  twoFactorEnabled: boolean("two_factor_enabled").default(false),
   twoFactorSecret: text("two_factor_secret"),
   passwordHash: text("password_hash"),
-  lastLoginAt: integer("last_login_at", { mode: "timestamp" }),
-  failedLoginAttempts: integer("failed_login_attempts").default(0),
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  lastLoginAt: timestamp("last_login_at"),
+  failedLoginAttempts: int("failed_login_attempts").default(0),
+  ...timestamps,
 }, (table) => [
-  // Indexes for common queries
   index("idx_members_member_number").on(table.memberNumber),
   index("idx_members_is_active").on(table.isActive),
   index("idx_members_joined_at").on(table.joinedAt),
   index("idx_members_phone").on(table.phone),
 ]);
 
-// Credit checks table - for loan default prevention
-export const creditChecks = sqliteTable("credit_checks", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  memberId: integer("member_id").notNull().references(() => members.id),
-  creditScore: integer("credit_score"),
-  incomeLevel: real("income_level"),
-  existingLoans: real("existing_loans"),
-  repaymentHistory: text("repayment_history"), // JSON
-  status: text("status").notNull().default("pending"), // pending, passed, failed
-  checkedAt: integer("checked_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
-  checkedBy: text("checked_by"),
+// Credit checks table
+export const creditChecks = mysqlTable("credit_checks", {
+  id: serial("id").primaryKey(),
+  memberId: int("member_id").notNull().references(() => members.id),
+  creditScore: int("credit_score"),
+  incomeLevel: float("income_level"),
+  existingLoans: float("existing_loans"),
+  repaymentHistory: text("repayment_history"),
+  status: varchar("status", { length: 20 }).default("pending"),
+  checkedAt: timestamp("checked_at").default(new Date()),
+  checkedBy: varchar("checked_by", { length: 100 }),
   notes: text("notes"),
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  ...timestamps,
 }, (table) => [
   index("idx_credit_checks_member_id").on(table.memberId),
   index("idx_credit_checks_status").on(table.status),
 ]);
 
-// Loan guarantors table - for loan default prevention
-export const guarantors = sqliteTable("guarantors", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  loanId: integer("loan_id").notNull().references(() => loans.id),
-  memberId: integer("member_id").notNull().references(() => members.id),
-  status: text("status").notNull().default("pending"), // pending, accepted, rejected
-  guaranteeAmount: real("guarantee_amount"),
-  acceptedAt: integer("accepted_at", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+// Loan guarantors table
+export const guarantors = mysqlTable("guarantors", {
+  id: serial("id").primaryKey(),
+  loanId: int("loan_id").notNull().references(() => loans.id),
+  memberId: int("member_id").notNull().references(() => members.id),
+  status: varchar("status", { length: 20 }).default("pending"),
+  guaranteeAmount: float("guarantee_amount"),
+  acceptedAt: timestamp("accepted_at"),
+  ...timestamps,
 }, (table) => [
   index("idx_guarantors_loan_id").on(table.loanId),
   index("idx_guarantors_member_id").on(table.memberId),
   index("idx_guarantors_status").on(table.status),
 ]);
 
-// Penalties table - for late payment handling
-export const penalties = sqliteTable("penalties", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  memberId: integer("member_id").notNull().references(() => members.id),
-  loanId: integer("loan_id").references(() => loans.id),
-  penaltyType: text("penalty_type").notNull(), // late_payment, early_repayment, default
-  amount: real("amount").notNull(),
+// Penalties table
+export const penalties = mysqlTable("penalties", {
+  id: serial("id").primaryKey(),
+  memberId: int("member_id").notNull().references(() => members.id),
+  loanId: int("loan_id").references(() => loans.id),
+  penaltyType: varchar("penalty_type", { length: 50 }).notNull(),
+  amount: float("amount").notNull(),
   reason: text("reason"),
-  status: text("status").notNull().default("pending"), // pending, waived, paid
-  appliedAt: integer("applied_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
-  paidAt: integer("paid_at", { mode: "timestamp" }),
-  waivedAt: integer("waived_at", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  status: varchar("status", { length: 20 }).default("pending"),
+  appliedAt: timestamp("applied_at").default(new Date()),
+  paidAt: timestamp("paid_at"),
+  waivedAt: timestamp("waived_at"),
+  ...timestamps,
 }, (table) => [
   index("idx_penalties_member_id").on(table.memberId),
   index("idx_penalties_loan_id").on(table.loanId),
   index("idx_penalties_status").on(table.status),
 ]);
 
-// Reminders/Messages table - for automatic notifications
-export const reminders = sqliteTable("reminders", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  memberId: integer("member_id").references(() => members.id),
-  loanId: integer("loan_id").references(() => loans.id),
-  reminderType: text("reminder_type").notNull(), // payment_due, payment_overdue, meeting, general
-  channel: text("channel").notNull(), // sms, email, both
+// Reminders table
+export const reminders = mysqlTable("reminders", {
+  id: serial("id").primaryKey(),
+  memberId: int("member_id").references(() => members.id),
+  loanId: int("loan_id").references(() => loans.id),
+  reminderType: varchar("reminder_type", { length: 50 }).notNull(),
+  channel: varchar("channel", { length: 20 }).notNull(),
   message: text("message").notNull(),
-  scheduledFor: integer("scheduled_for", { mode: "timestamp" }).$defaultFn(() => new Date()),
-  sentAt: integer("sent_at", { mode: "timestamp" }),
-  status: text("status").notNull().default("pending"), // pending, sent, failed
+  scheduledFor: timestamp("scheduled_for").default(new Date()),
+  sentAt: timestamp("sent_at"),
+  status: varchar("status", { length: 20 }).default("pending"),
   response: text("response"),
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  ...timestamps,
 }, (table) => [
   index("idx_reminders_member_id").on(table.memberId),
   index("idx_reminders_loan_id").on(table.loanId),
@@ -101,18 +104,17 @@ export const reminders = sqliteTable("reminders", {
   index("idx_reminders_scheduled_for").on(table.scheduledFor),
 ]);
 
-// Savings/Deposits table
-export const savings = sqliteTable("savings", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  memberId: integer("member_id").notNull().references(() => members.id),
-  accountNumber: text("account_number").notNull(),
-  savingsType: text("savings_type").notNull().default("ordinary"), // ordinary, fixed, voluntary
-  balance: real("balance").notNull().default(0),
-  interestRate: real("interest_rate").default(0),
-  openedAt: integer("opened_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+// Savings table
+export const savings = mysqlTable("savings", {
+  id: serial("id").primaryKey(),
+  memberId: int("member_id").notNull().references(() => members.id),
+  accountNumber: varchar("account_number", { length: 50 }).notNull(),
+  savingsType: varchar("savings_type", { length: 50 }).default("ordinary"),
+  balance: float("balance").notNull().default(0),
+  interestRate: float("interest_rate").default(0),
+  openedAt: timestamp("opened_at").default(new Date()),
+  isActive: boolean("is_active").default(true),
+  ...timestamps,
 }, (table) => [
   index("idx_savings_member_id").on(table.memberId),
   index("idx_savings_account_number").on(table.accountNumber),
@@ -120,29 +122,28 @@ export const savings = sqliteTable("savings", {
 ]);
 
 // Loans table
-export const loans = sqliteTable("loans", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  memberId: integer("member_id").notNull().references(() => members.id),
-  loanNumber: text("loan_number").notNull().unique(),
-  principalAmount: real("principal_amount").notNull(),
-  interestRate: real("interest_rate").notNull(),
-  interestAmount: real("interest_amount").notNull().default(0),
-  totalAmount: real("total_amount").notNull(),
-  paidAmount: real("paid_amount").notNull().default(0),
-  balance: real("balance").notNull(),
-  termMonths: integer("term_months").notNull(),
-  installmentAmount: real("installment_amount").notNull(),
-  status: text("status").notNull().default("pending"), // pending, approved, disbursed, fully_paid, defaulted, written_off
+export const loans = mysqlTable("loans", {
+  id: serial("id").primaryKey(),
+  memberId: int("member_id").notNull().references(() => members.id),
+  loanNumber: varchar("loan_number", { length: 50 }).notNull().unique(),
+  principalAmount: float("principal_amount").notNull(),
+  interestRate: float("interest_rate").notNull(),
+  interestAmount: float("interest_amount").notNull().default(0),
+  totalAmount: float("total_amount").notNull(),
+  paidAmount: float("paid_amount").notNull().default(0),
+  balance: float("balance").notNull(),
+  termMonths: int("term_months").notNull(),
+  installmentAmount: float("installment_amount").notNull(),
+  status: varchar("status", { length: 20 }).default("pending"),
   purpose: text("purpose"),
-  guarantor1Id: integer("guarantor_1_id").references(() => members.id),
-  guarantor2Id: integer("guarantor_2_id").references(() => members.id),
-  appliedAt: integer("applied_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
-  approvedAt: integer("approved_at", { mode: "timestamp" }),
-  disbursedAt: integer("disbursed_at", { mode: "timestamp" }),
-  dueDate: integer("due_date", { mode: "timestamp" }),
-  completedAt: integer("completed_at", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  guarantor1Id: int("guarantor_1_id").references(() => members.id),
+  guarantor2Id: int("guarantor_2_id").references(() => members.id),
+  appliedAt: timestamp("applied_at").default(new Date()),
+  approvedAt: timestamp("approved_at"),
+  disbursedAt: timestamp("disbursed_at"),
+  dueDate: timestamp("due_date"),
+  completedAt: timestamp("completed_at"),
+  ...timestamps,
 }, (table) => [
   index("idx_loans_member_id").on(table.memberId),
   index("idx_loans_loan_number").on(table.loanNumber),
@@ -151,23 +152,23 @@ export const loans = sqliteTable("loans", {
   index("idx_loans_disbursed_at").on(table.disbursedAt),
 ]);
 
-// Transactions table - for all financial movements
-export const transactions = sqliteTable("transactions", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  memberId: integer("member_id").references(() => members.id),
-  savingsId: integer("savings_id").references(() => savings.id),
-  loanId: integer("loan_id").references(() => loans.id),
-  transactionNumber: text("transaction_number").notNull().unique(),
-  transactionType: text("transaction_type").notNull(), // deposit, withdrawal, loan_disbursement, loan_repayment, interest, penalty, fee
-  amount: real("amount").notNull(),
-  balanceAfter: real("balance_after").notNull(),
-  reference: text("reference"),
+// Transactions table
+export const transactions = mysqlTable("transactions", {
+  id: serial("id").primaryKey(),
+  memberId: int("member_id").references(() => members.id),
+  savingsId: int("savings_id").references(() => savings.id),
+  loanId: int("loan_id").references(() => loans.id),
+  transactionNumber: varchar("transaction_number", { length: 50 }).notNull().unique(),
+  transactionType: varchar("transaction_type", { length: 50 }).notNull(),
+  amount: float("amount").notNull(),
+  balanceAfter: float("balance_after").notNull(),
+  reference: varchar("reference", { length: 100 }),
   description: text("description"),
-  transactionDate: integer("transaction_date", { mode: "timestamp" }).$defaultFn(() => new Date()),
-  recordedAt: integer("recorded_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
-  recordedBy: text("recorded_by"),
-  isReversed: integer("is_reversed", { mode: "boolean" }).default(false),
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  transactionDate: timestamp("transaction_date").default(new Date()),
+  recordedAt: timestamp("recorded_at").default(new Date()),
+  recordedBy: varchar("recorded_by", { length: 100 }),
+  isReversed: boolean("is_reversed").default(false),
+  ...timestamps,
 }, (table) => [
   index("idx_transactions_member_id").on(table.memberId),
   index("idx_transactions_savings_id").on(table.savingsId),
@@ -177,18 +178,18 @@ export const transactions = sqliteTable("transactions", {
   index("idx_transactions_transaction_number").on(table.transactionNumber),
 ]);
 
-// Reports table - for storing generated reports
-export const reports = sqliteTable("reports", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  reportType: text("report_type").notNull(), // monthly_summary, member_statement, loan_portfolio, savings_summary, profit_loss
-  periodStart: integer("period_start", { mode: "timestamp" }).notNull(),
-  periodEnd: integer("period_end", { mode: "timestamp" }).notNull(),
-  reportData: text("report_data"), // JSON string of report contents
-  status: text("status").notNull().default("pending"), // pending, processing, completed, failed
-  generatedAt: integer("generated_at", { mode: "timestamp" }),
-  generatedBy: text("generated_by"),
+// Reports table
+export const reports = mysqlTable("reports", {
+  id: serial("id").primaryKey(),
+  reportType: varchar("report_type", { length: 50 }).notNull(),
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+  reportData: text("report_data"),
+  status: varchar("status", { length: 20 }).default("pending"),
+  generatedAt: timestamp("generated_at"),
+  generatedBy: varchar("generated_by", { length: 100 }),
   errorMessage: text("error_message"),
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  ...timestamps,
 }, (table) => [
   index("idx_reports_report_type").on(table.reportType),
   index("idx_reports_period_start").on(table.periodStart),
@@ -196,107 +197,107 @@ export const reports = sqliteTable("reports", {
   index("idx_reports_status").on(table.status),
 ]);
 
-// Loan restructuring table - for flexible repayment plans
-export const loanRestructuring = sqliteTable("loan_restructuring", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  loanId: integer("loan_id").notNull().references(() => loans.id),
-  restructuringType: text("restructuring_type").notNull(), // extension, reduction, deferment, refinancing
-  originalTerm: integer("original_term"),
-  newTerm: integer("new_term"),
-  originalInstallment: real("original_installment"),
-  newInstallment: real("new_installment"),
+// Loan restructuring table
+export const loanRestructuring = mysqlTable("loan_restructuring", {
+  id: serial("id").primaryKey(),
+  loanId: int("loan_id").notNull().references(() => loans.id),
+  restructuringType: varchar("restructuring_type", { length: 50 }).notNull(),
+  originalTerm: int("original_term"),
+  newTerm: int("new_term"),
+  originalInstallment: float("original_installment"),
+  newInstallment: float("new_installment"),
   reason: text("reason"),
-  status: text("status").notNull().default("pending"), // pending, approved, rejected
-  approvedAt: integer("approved_at", { mode: "timestamp" }),
-  approvedBy: text("approved_by"),
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  status: varchar("status", { length: 20 }).default("pending"),
+  approvedAt: timestamp("approved_at"),
+  approvedBy: varchar("approved_by", { length: 100 }),
+  ...timestamps,
 }, (table) => [
   index("idx_loan_restructuring_loan_id").on(table.loanId),
   index("idx_loan_restructuring_status").on(table.status),
 ]);
 
-// Backups table - for data backup tracking
-export const backups = sqliteTable("backups", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  backupType: text("backup_type").notNull(), // full, incremental, manual
-  fileName: text("file_name").notNull(),
-  fileSize: integer("file_size"),
-  status: text("status").notNull().default("pending"), // pending, completed, failed
-  startedAt: integer("started_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
-  completedAt: integer("completed_at", { mode: "timestamp" }),
+// Backups table
+export const backups = mysqlTable("backups", {
+  id: serial("id").primaryKey(),
+  backupType: varchar("backup_type", { length: 50 }).notNull(),
+  fileName: varchar("file_name", { length: 255 }).notNull(),
+  fileSize: int("file_size"),
+  status: varchar("status", { length: 20 }).default("pending"),
+  startedAt: timestamp("started_at").default(new Date()),
+  completedAt: timestamp("completed_at"),
   storageLocation: text("storage_location"),
-  verifiedAt: integer("verified_at", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  verifiedAt: timestamp("verified_at"),
+  ...timestamps,
 }, (table) => [
   index("idx_backups_status").on(table.status),
   index("idx_backups_backup_type").on(table.backupType),
 ]);
 
-// Member campaigns table - for attracting new members
-export const campaigns = sqliteTable("campaigns", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  name: text("name").notNull(),
-  type: text("type").notNull(), // recruitment, savings, loan_promo
+// Campaigns table
+export const campaigns = mysqlTable("campaigns", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  type: varchar("type", { length: 50 }).notNull(),
   description: text("description"),
-  targetAmount: real("target_amount"),
-  startDate: integer("start_date", { mode: "timestamp" }).$defaultFn(() => new Date()),
-  endDate: integer("end_date", { mode: "timestamp" }),
-  status: text("status").notNull().default("active"), // draft, active, completed, cancelled
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  targetAmount: float("target_amount"),
+  startDate: timestamp("start_date").default(new Date()),
+  endDate: timestamp("end_date"),
+  status: varchar("status", { length: 20 }).default("active"),
+  ...timestamps,
 }, (table) => [
   index("idx_campaigns_status").on(table.status),
   index("idx_campaigns_type").on(table.type),
 ]);
 
-// Financial partners table - for partnerships
-export const partners = sqliteTable("partners", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  name: text("name").notNull(),
-  type: text("type").notNull(), // bank, microfinance, corporate
-  contactPerson: text("contact_person"),
-  email: text("email"),
-  phone: text("phone"),
+// Partners table
+export const partners = mysqlTable("partners", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  type: varchar("type", { length: 50 }).notNull(),
+  contactPerson: varchar("contact_person", { length: 100 }),
+  email: varchar("email", { length: 255 }),
+  phone: varchar("phone", { length: 50 }),
   address: text("address"),
-  status: text("status").notNull().default("active"), // active, inactive
-  agreementStart: integer("agreement_start", { mode: "timestamp" }),
-  agreementEnd: integer("agreement_end", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  status: varchar("status", { length: 20 }).default("active"),
+  agreementStart: timestamp("agreement_start"),
+  agreementEnd: timestamp("agreement_end"),
+  ...timestamps,
 }, (table) => [
   index("idx_partners_status").on(table.status),
   index("idx_partners_type").on(table.type),
 ]);
 
-// Financial literacy resources
-export const resources = sqliteTable("resources", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  title: text("title").notNull(),
-  type: text("type").notNull(), // article, video, guide
-  category: text("category").notNull(), // savings, loans, investment, general
+// Resources table
+export const resources = mysqlTable("resources", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  type: varchar("type", { length: 50 }).notNull(),
+  category: varchar("category", { length: 50 }).notNull(),
   content: text("content"),
-  fileUrl: text("file_url"),
-  publishedAt: integer("published_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  fileUrl: varchar("file_url", { length: 500 }),
+  publishedAt: timestamp("published_at").default(new Date()),
+  isActive: boolean("is_active").default(true),
+  ...timestamps,
 }, (table) => [
   index("idx_resources_type").on(table.type),
   index("idx_resources_category").on(table.category),
   index("idx_resources_is_active").on(table.isActive),
 ]);
 
-// Audit logs - for transparency and fraud prevention
-export const auditLogs = sqliteTable("audit_logs", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  userId: integer("user_id"),
-  action: text("action").notNull(), // login, logout, create, update, delete, approve, reject
-  entityType: text("entity_type").notNull(), // member, loan, savings, transaction, report
-  entityId: integer("entity_id"),
-  oldValue: text("old_value"), // JSON
-  newValue: text("new_value"), // JSON
-  ipAddress: text("ip_address"),
+// Audit logs table
+export const auditLogs = mysqlTable("audit_logs", {
+  id: serial("id").primaryKey(),
+  userId: int("user_id"),
+  action: varchar("action", { length: 50 }).notNull(),
+  entityType: varchar("entity_type", { length: 50 }).notNull(),
+  entityId: int("entity_id"),
+  oldValue: text("old_value"),
+  newValue: text("new_value"),
+  ipAddress: varchar("ip_address", { length: 50 }),
   userAgent: text("user_agent"),
-  status: text("status").notNull().default("success"), // success, failed
+  status: varchar("status", { length: 20 }).default("success"),
   errorMessage: text("error_message"),
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  ...timestamps,
 }, (table) => [
   index("idx_audit_logs_user_id").on(table.userId),
   index("idx_audit_logs_action").on(table.action),
@@ -304,32 +305,41 @@ export const auditLogs = sqliteTable("audit_logs", {
   index("idx_audit_logs_created_at").on(table.createdAt),
 ]);
 
-// Compliance tracking - for SASRA regulations
-export const complianceRecords = sqliteTable("compliance_records", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+// Compliance records table
+export const complianceRecords = mysqlTable("compliance_records", {
+  id: serial("id").primaryKey(),
   requirement: text("requirement").notNull(),
-  category: text("category").notNull(), // capital_adequacy, liquidity, governance, reporting
-  status: text("status").notNull().default("compliant"), // compliant, non_compliant, in_progress
-  dueDate: integer("due_date", { mode: "timestamp" }),
-  completedAt: integer("completed_at", { mode: "timestamp" }),
+  category: varchar("category", { length: 50 }).notNull(),
+  status: varchar("status", { length: 20 }).default("compliant"),
+  dueDate: timestamp("due_date"),
+  completedAt: timestamp("completed_at"),
   evidence: text("evidence"),
   notes: text("notes"),
-  reviewedBy: text("reviewed_by"),
-  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  reviewedBy: varchar("reviewed_by", { length: 100 }),
+  ...timestamps,
 }, (table) => [
   index("idx_compliance_status").on(table.status),
   index("idx_compliance_category").on(table.category),
   index("idx_compliance_due_date").on(table.dueDate),
 ]);
 
-// System settings table
-export const settings = sqliteTable("settings", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  key: text("key").notNull().unique(),
+// Settings table
+export const settings = mysqlTable("settings", {
+  id: serial("id").primaryKey(),
+  key: varchar("key", { length: 100 }).notNull().unique(),
   value: text("value"),
   description: text("description"),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  updatedAt: timestamp("updated_at").default(new Date()),
 }, (table) => [
   index("idx_settings_key").on(table.key),
 ]);
+
+// Type exports
+export type Member = typeof members.$inferSelect;
+export type NewMember = typeof members.$inferInsert;
+export type Loan = typeof loans.$inferSelect;
+export type NewLoan = typeof loans.$inferInsert;
+export type Savings = typeof savings.$inferSelect;
+export type NewSavings = typeof savings.$inferInsert;
+export type Transaction = typeof transactions.$inferSelect;
+export type NewTransaction = typeof transactions.$inferInsert;

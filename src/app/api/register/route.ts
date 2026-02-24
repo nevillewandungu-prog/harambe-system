@@ -68,15 +68,13 @@ export async function POST(request: Request) {
       passwordHash,
       isActive: true,
       joinedAt: new Date(),
-    }).returning({ id: members.id, memberNumber: members.memberNumber });
+    })
 
     return NextResponse.json({
       success: true,
       message: "Registration successful! Welcome to Harambee Sacco.",
       member: {
-        id: newMember[0].id,
-        memberNumber: newMember[0].memberNumber,
-        firstName,
+        memberNumber,
         lastName,
       },
     });

@@ -94,7 +94,7 @@ export async function performCreditCheck(memberId: number, loanAmount: number) {
   }
 
   // Save credit check record
-  const [creditCheck] = await db
+  await db
     .insert(creditChecks)
     .values({
       memberId,
@@ -105,9 +105,9 @@ export async function performCreditCheck(memberId: number, loanAmount: number) {
       status: creditScore >= 50 ? 'passed' : 'failed',
       checkedAt: new Date(),
     })
-    .returning();
+    
 
-  return creditCheck;
+  return { memberId, creditScore: Math.max(0, Math.min(100, Math.round(creditScore))), status: creditScore >= 50 ? "passed" : "failed" };
 }
 
 /**
@@ -121,7 +121,7 @@ export async function requestGuarantors(loanId: number, memberIds: number[]) {
         loanId,
         memberId,
         status: 'pending',
-      }).returning()
+      })
     )
   );
   return guarantorRecords.flat();
@@ -150,7 +150,7 @@ export async function schedulePaymentReminder(
     message: `Reminder: Your loan payment of KES ${loan.installmentAmount} is due on ${loan.dueDate.toDateString()}.`,
     scheduledFor: reminderDate,
     status: 'pending',
-  }).returning();
+  })
 
   return reminder;
 }
@@ -174,7 +174,7 @@ export async function applyLatePenalty(memberId: number, loanId: number) {
     reason: `Late payment penalty for loan ${loan.loanNumber}`,
     status: 'pending',
     appliedAt: new Date(),
-  }).returning();
+  })
 
   return penalty;
 }
@@ -206,7 +206,7 @@ export async function logAuditTrail(
     newValue: newValue ? JSON.stringify(newValue) : null,
     ipAddress,
     status: 'success',
-  }).returning();
+  })
 
   return log;
 }
@@ -392,7 +392,7 @@ export async function quickLoanApproval(memberId: number, amount: number, purpos
   const loanNumber = `LN${Date.now()}${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
 
   // Create loan record
-  const [loan] = await db.insert(loans).values({
+  await db.insert(loans).values({
     memberId,
     loanNumber,
     principalAmount: amount,
@@ -407,7 +407,10 @@ export async function quickLoanApproval(memberId: number, amount: number, purpos
     purpose,
     dueDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
     approvedAt: new Date(),
-  }).returning();
+  });
+
+  // Get the inserted loan by loanNumber
+  const [loan] = await db.select().from(loans).where(eq(loans.loanNumber, loanNumber));
 
   await logAuditTrail(memberId, 'loan_approved', 'loan', loan.id, undefined, { amount, interestRate });
 
@@ -468,7 +471,7 @@ export async function addComplianceRequirement(
     category,
     status: 'in_progress',
     dueDate,
-  }).returning();
+  })
 
   return record;
 }
@@ -496,7 +499,7 @@ export async function createCampaign(
     targetAmount,
     endDate,
     status: 'active',
-  }).returning();
+  })
 
   return campaign;
 }
@@ -538,7 +541,7 @@ export async function addPartner(
     agreementStart: new Date(),
     agreementEnd,
     status: 'active',
-  }).returning();
+  })
 
   return partner;
 }
@@ -560,7 +563,7 @@ export async function recordBackup(backupType: 'full' | 'incremental' | 'manual'
     startedAt: new Date(),
     completedAt: new Date(),
     storageLocation: '/backups',
-  }).returning();
+  })
 
   return backup;
 }
@@ -586,7 +589,7 @@ export async function sendMemberCommunication(
     message,
     scheduledFor: new Date(),
     status: 'pending',
-  }).returning();
+  })
 
   return reminder;
 }
@@ -609,7 +612,7 @@ export async function broadcastToMembers(message: string, channel: 'sms' | 'emai
         message,
         scheduledFor: new Date(),
         status: 'pending',
-      }).returning()
+      })
     )
   );
 
@@ -636,7 +639,7 @@ export async function addResource(
     content,
     publishedAt: new Date(),
     isActive: true,
-  }).returning();
+  })
 
   return resource;
 }
@@ -670,7 +673,7 @@ export async function requestLoanRestructuring(
     newInstallment,
     reason,
     status: 'pending',
-  }).returning();
+  })
 
   return restructure;
 }
@@ -739,14 +742,13 @@ export async function setSetting(key: string, value: string, description?: strin
       description,
       updatedAt: new Date(),
     })
-    .onConflictDoUpdate({
-      target: settings.key,
+    .onDuplicateKeyUpdate({
       set: {
         value,
         description,
         updatedAt: new Date(),
       },
     })
-    .returning();
+    
   return setting;
 }

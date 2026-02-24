@@ -41,6 +41,9 @@ export default function RegisterPage() {
         throw new Error(data.error || "Registration failed");
       }
 
+      // Store member in localStorage
+      localStorage.setItem("sacco_member", JSON.stringify(data.member));
+      
       setSuccess(true);
     } catch (err: any) {
       setError(err.message);
@@ -63,10 +66,10 @@ export default function RegisterPage() {
             Your registration was successful. You can now enjoy our financial services.
           </p>
           <button
-            onClick={() => router.push("/")}
+            onClick={() => router.push("/dashboard")}
             className="w-full bg-amber-500 hover:bg-amber-600 text-neutral-900 font-semibold py-3 px-6 rounded-lg transition-colors"
           >
-            Go to Home
+            Go to Dashboard
           </button>
         </div>
       </main>
