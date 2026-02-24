@@ -28,6 +28,9 @@ A comprehensive financial management system for Harambee Sacco that addresses al
   - [x] Low Member Participation (communications)
   - [x] Economic Challenges (flexible plans)
 - [x] Ready to Download System (exports in CSV, JSON, Excel formats)
+- [x] User Registration System (easy signup with phone/email)
+- [x] User Login System (sign in with phone, email, or member number)
+- [x] Landing Page with CTA (Get Started and Sign In buttons)
 
 ## Current Structure
 
