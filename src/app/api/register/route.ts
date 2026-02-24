@@ -2,16 +2,25 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { members } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { hash, verify } from "@node-rs/argon2";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { firstName, lastName, email, phone, idNumber, dateOfBirth, address } = body;
+    const { firstName, lastName, email, phone, idNumber, dateOfBirth, address, password } = body;
 
     // Validate required fields
-    if (!firstName || !lastName || !phone) {
+    if (!firstName || !lastName || !phone || !password) {
       return NextResponse.json(
-        { error: "First name, last name, and phone are required" },
+        { error: "First name, last name, phone, and password are required" },
+        { status: 400 }
+      );
+    }
+
+    // Validate password strength
+    if (password.length < 6) {
+      return NextResponse.json(
+        { error: "Password must be at least 6 characters" },
         { status: 400 }
       );
     }
@@ -43,6 +52,9 @@ export async function POST(request: Request) {
     const timestamp = Date.now().toString().slice(-6);
     const memberNumber = `HAR-${timestamp}`;
 
+    // Hash the password
+    const passwordHash = await hash(password);
+
     // Create new member
     const newMember = await db.insert(members).values({
       memberNumber,
@@ -53,6 +65,7 @@ export async function POST(request: Request) {
       idNumber: idNumber || null,
       dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
       address: address || null,
+      passwordHash,
       isActive: true,
       joinedAt: new Date(),
     }).returning({ id: members.id, memberNumber: members.memberNumber });

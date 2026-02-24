@@ -2,11 +2,20 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { members } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { verify } from "@node-rs/argon2";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { phone, email, memberNumber } = body;
+    const { phone, email, memberNumber, password } = body;
+
+    // Validate required fields
+    if (!password) {
+      return NextResponse.json(
+        { error: "Password is required" },
+        { status: 400 }
+      );
+    }
 
     // Try to find member by phone, email, or member number
     let member = null;
