@@ -10,12 +10,6 @@ export default function Home() {
             <h1 className="text-2xl font-bold text-amber-500">Harambee Sacco</h1>
             <div className="flex items-center gap-4">
               <Link
-                href="/login"
-                className="text-neutral-300 hover:text-white px-4 py-2 rounded-lg transition-colors"
-              >
-                Sign In
-              </Link>
-              <Link
                 href="/register"
                 className="bg-amber-500 hover:bg-amber-600 text-neutral-900 font-semibold px-4 py-2 rounded-lg transition-colors"
               >
@@ -42,12 +36,6 @@ export default function Home() {
               className="bg-amber-500 hover:bg-amber-600 text-neutral-900 font-semibold px-8 py-4 rounded-lg text-lg transition-colors"
             >
               Join Now — It&apos;s Free
-            </Link>
-            <Link
-              href="/login"
-              className="border border-neutral-600 hover:border-neutral-500 text-white font-semibold px-8 py-4 rounded-lg text-lg transition-colors"
-            >
-              Member Login
             </Link>
           </div>
         </div>
